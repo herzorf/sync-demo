@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 )
 
 //go:embed frontend/dist/*
@@ -19,14 +20,30 @@ func main() {
 	go func() {
 		gin.SetMode(gin.DebugMode)
 		router := gin.Default()
-		router.GET("/", func(c *gin.Context) {
-			_, err := c.Writer.Write([]byte("hello"))
-			if err != nil {
-				log.Fatal(err)
-			}
-		})
 		staticFiles, _ := fs.Sub(FS, "frontend/dist")
 		router.StaticFS("/static", http.FS(staticFiles))
+		router.NoRoute(func(c *gin.Context) {
+			path := c.Request.URL.Path
+			if strings.HasPrefix(path, "/static") {
+				file, err := staticFiles.Open("index/html")
+				if err != nil {
+					log.Fatal(err)
+				}
+				defer func(file fs.File) {
+					err := file.Close()
+					if err != nil {
+
+					}
+				}(file)
+				stat, err := file.Stat()
+				if err != nil {
+					log.Fatal(err)
+				}
+				c.DataFromReader(http.StatusOK, stat.Size(), "text/html", file, nil)
+			} else {
+				c.Status(http.StatusNotFound)
+			}
+		})
 		err := router.Run(":8080")
 		if err != nil {
 			log.Fatal(err)
@@ -35,7 +52,7 @@ func main() {
 
 	cmd := exec.Command(
 		"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-		"--app=http:127.0.0.1:8080/",
+		"--app=http:127.0.0.1:8080/static/index.html",
 		"--user-data-dir=test-user-data",
 	)
 	err := cmd.Start()
