@@ -2,10 +2,10 @@ package main
 
 import (
 	"embed"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"io/fs"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 //go:embed frontend/dist/*
@@ -38,7 +39,8 @@ func TextsController(c *gin.Context) {
 			log.Fatal(err)
 		}
 		fullPath := path.Join("uploads", filename+".txt")
-		err = ioutil.WriteFile(filepath.Join(dir, fullPath), []byte(json.Raw), 0644)
+		fmt.Println(fullPath)
+		err = os.WriteFile(filepath.Join(dir, fullPath), []byte(json.Raw), 0644)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -52,10 +54,11 @@ func main() {
 		gin.SetMode(gin.DebugMode)
 		router := gin.Default()
 		staticFiles, _ := fs.Sub(FS, "frontend/dist")
+		router.POST("/api/v1/texts", TextsController)
 		router.StaticFS("/static", http.FS(staticFiles))
 		router.NoRoute(func(c *gin.Context) {
-			path := c.Request.URL.Path
-			if strings.HasPrefix(path, "/static") {
+			p := c.Request.URL.Path
+			if strings.HasPrefix(p, "/static") {
 				file, err := staticFiles.Open("index.html")
 				if err != nil {
 					log.Fatal(err)
@@ -91,7 +94,7 @@ func main() {
 		log.Fatal(err)
 	}
 	chSingal := make(chan os.Signal, 1)
-	signal.Notify(chSingal, os.Interrupt)
+	signal.Notify(chSingal, syscall.SIGTERM)
 
 	select {
 	case <-chSingal:
