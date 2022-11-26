@@ -3,17 +3,48 @@ package main
 import (
 	"embed"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"io/fs"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
+	"path/filepath"
 	"strings"
 )
 
 //go:embed frontend/dist/*
 var FS embed.FS
+
+func TextsController(c *gin.Context) {
+	var json struct {
+		Raw string `json:"raw"`
+	}
+	if err := c.ShouldBindJSON(&json); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"err": err.Error()})
+	} else {
+		executable, err := os.Executable()
+		if err != nil {
+			log.Fatal(err)
+		}
+		dir := filepath.Dir(executable)
+		filename := uuid.New().String()
+		uploads := filepath.Join(dir, "uploads")
+		err = os.MkdirAll(uploads, os.ModePerm)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fullPath := path.Join("uploads", filename+".txt")
+		err = ioutil.WriteFile(filepath.Join(dir, fullPath), []byte(json.Raw), 0644)
+		if err != nil {
+			log.Fatal(err)
+		}
+		c.JSON(http.StatusOK, gin.H{"url": "/" + fullPath})
+	}
+}
 
 func main() {
 
