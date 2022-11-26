@@ -25,7 +25,7 @@ func main() {
 		router.NoRoute(func(c *gin.Context) {
 			path := c.Request.URL.Path
 			if strings.HasPrefix(path, "/static") {
-				file, err := staticFiles.Open("index/html")
+				file, err := staticFiles.Open("index.html")
 				if err != nil {
 					log.Fatal(err)
 				}
