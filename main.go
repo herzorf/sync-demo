@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -47,7 +48,18 @@ func TextsController(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"url": "/" + fullPath})
 	}
 }
-
+func AddressesController(c *gin.Context) {
+	addrs, _ := net.InterfaceAddrs()
+	var result []string
+	for _, address := range addrs {
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				result = append(result, ipnet.IP.String())
+			}
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"address": result})
+}
 func main() {
 
 	go func() {
@@ -55,6 +67,7 @@ func main() {
 		router := gin.Default()
 		staticFiles, _ := fs.Sub(FS, "frontend/dist")
 		router.POST("/api/v1/texts", TextsController)
+		router.GET("/api/v1/addresses", AddressesController)
 		router.StaticFS("/static", http.FS(staticFiles))
 		router.NoRoute(func(c *gin.Context) {
 			p := c.Request.URL.Path
