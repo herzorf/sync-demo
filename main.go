@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/skip2/go-qrcode"
 	"io/fs"
 	"log"
 	"net"
@@ -81,6 +82,17 @@ func UploadsController(c *gin.Context) {
 		c.Status(http.StatusNotFound)
 	}
 }
+func QrcodesController(c *gin.Context) {
+	if content := c.Query("content"); content != "" {
+		png, err := qrcode.Encode(content, qrcode.Medium, 256)
+		if err != nil {
+			log.Fatal(err)
+		}
+		c.Data(http.StatusOK, "image/png", png)
+	} else {
+		c.Status(http.StatusBadRequest)
+	}
+}
 func main() {
 
 	go func() {
@@ -88,6 +100,7 @@ func main() {
 		router := gin.Default()
 		staticFiles, _ := fs.Sub(FS, "frontend/dist")
 		router.GET("/uploads/:path", UploadsController)
+		router.GET("/api/v1/qrcodes", QrcodesController)
 		router.POST("/api/v1/texts", TextsController)
 		router.GET("/api/v1/addresses", AddressesController)
 		router.StaticFS("/static", http.FS(staticFiles))
